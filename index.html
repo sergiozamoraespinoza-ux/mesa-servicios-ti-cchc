@@ -22,217 +22,183 @@
 <script type="text/babel">
 const { useState, useRef, useEffect } = React;
 
-const CLOUD_ID = "d7c98180-105e-4757-b222-af766b22ce0e";
 const PROJECT_KEY = "MSTI";
 const JIRA_URL = "https://cchc.atlassian.net";
 
 const ISSUE_TYPES = {
-  Incidente: { id: "10077", emoji: "🔴" },
-  Requerimiento: { id: "10076", emoji: "🔵" },
+  Incidente:    { id: "10077", emoji: "🔴" },
+  Requerimiento:{ id: "10076", emoji: "🔵" },
 };
-const PRIORITIES = ["Alta", "Media", "Baja"];
-const PRIORITY_COLORS = { Alta: "#E74100", Media: "#f59e0b", Baja: "#22c55e" };
+const PRIORITIES = ["Alta","Media","Baja"];
+const PRIORITY_COLORS = { Alta:"#E74100", Media:"#f59e0b", Baja:"#22c55e" };
 const CATEGORIES = [
   "Acceso y permisos","Hardware / Equipos","Software / Aplicaciones",
   "Red / Conectividad","Correo electrónico","Telefonía / VoIP",
   "Seguridad informática","Otro",
 ];
 
-function TypingDots() {
-  return (
-    <div style={{ display:"flex", gap:4, alignItems:"center", padding:"10px 0" }}>
-      {[0,1,2].map(i => (
-        <div key={i} style={{
-          width:7, height:7, borderRadius:"50%", background:"#006EDC",
-          animation:"bounce 1.2s infinite", animationDelay:`${i*0.2}s`,
-        }}/>
-      ))}
-    </div>
-  );
-}
-
-function TicketPreview({ ticket, onConfirm, onCancel, loading }) {
-  const type = ISSUE_TYPES[ticket.type] || ISSUE_TYPES.Requerimiento;
-  return (
-    <div style={{
-      background:"linear-gradient(135deg,#0f1c2e,#0a1628)",
-      border:"1px solid #1e3a5f", borderRadius:14, padding:18, marginTop:6,
-      boxShadow:"0 0 0 1px rgba(0,110,220,.12),0 8px 28px rgba(0,0,0,.45)",
-    }}>
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-        <span style={{
-          background:"rgba(0,110,220,.15)", border:"1px solid rgba(0,110,220,.3)",
-          borderRadius:7, padding:"3px 9px", fontSize:11, color:"#60a5fa",
-          fontFamily:"monospace", letterSpacing:1,
-        }}>{PROJECT_KEY} · nuevo</span>
-        <span style={{ marginLeft:"auto", fontSize:12, color:PRIORITY_COLORS[ticket.priority] }}>● {ticket.priority}</span>
-      </div>
-      <div style={{ display:"flex", gap:9, marginBottom:11 }}>
-        <span style={{ fontSize:18, flexShrink:0 }}>{type.emoji}</span>
-        <div>
-          <div style={{ fontSize:11, color:"#64748b", textTransform:"uppercase", letterSpacing:1 }}>{ticket.type}</div>
-          <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", lineHeight:1.35, marginTop:2 }}>{ticket.summary}</div>
-        </div>
-      </div>
-      <div style={{ background:"rgba(255,255,255,.03)", borderRadius:9, padding:"10px 13px", border:"1px solid rgba(255,255,255,.05)", marginBottom:14 }}>
-        <div style={{ fontSize:11, color:"#64748b", marginBottom:5, letterSpacing:1, textTransform:"uppercase" }}>Descripción</div>
-        <p style={{ margin:0, fontSize:13, color:"#94a3b8", lineHeight:1.6 }}>{ticket.description}</p>
-      </div>
-      {ticket.category && (
-        <div style={{ fontSize:12, color:"#475569", marginBottom:13 }}>
-          📂 Categoría: <span style={{ color:"#94a3b8" }}>{ticket.category}</span>
-        </div>
-      )}
-      <div style={{ display:"flex", gap:9 }}>
-        <button onClick={onConfirm} disabled={loading} style={{
-          flex:1, padding:"10px 0", borderRadius:9, border:"none", cursor:loading?"wait":"pointer",
-          background:loading?"#1e3a5f":"linear-gradient(135deg,#006EDC,#0050a8)",
-          color:"#fff", fontWeight:700, fontSize:13.5,
-          boxShadow:loading?"none":"0 4px 12px rgba(0,110,220,.4)",
-          display:"flex", alignItems:"center", justifyContent:"center", gap:6,
-        }}>
-          {loading ? <span>⏳ Creando…</span> : <span>✅ Crear en Jira</span>}
-        </button>
-        <button onClick={onCancel} disabled={loading} style={{
-          padding:"10px 16px", borderRadius:9, border:"1px solid #1e3a5f",
-          background:"transparent", color:"#64748b", cursor:"pointer", fontSize:13.5, fontWeight:600,
-        }}>Editar</button>
-      </div>
-    </div>
-  );
-}
-
-function TicketSuccess({ ticket, issueKey }) {
-  return (
-    <div style={{
-      background:"linear-gradient(135deg,#052e16,#0a1628)",
-      border:"1px solid #166534", borderRadius:14, padding:18,
-      boxShadow:"0 0 0 1px rgba(34,197,94,.08)",
-    }}>
-      <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:10 }}>
-        <div style={{ width:34, height:34, borderRadius:9, background:"rgba(34,197,94,.15)", border:"1px solid rgba(34,197,94,.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17 }}>✅</div>
-        <div>
-          <div style={{ fontSize:14, fontWeight:700, color:"#4ade80" }}>Ticket creado exitosamente</div>
-          <div style={{ fontSize:11.5, color:"#64748b" }}>Mesa de Servicios TI · CChC</div>
-        </div>
-        <a href={`${JIRA_URL}/browse/${issueKey}`} target="_blank" rel="noreferrer" style={{
-          marginLeft:"auto", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.2)",
-          borderRadius:7, padding:"5px 11px", color:"#4ade80", fontSize:12, fontWeight:700, textDecoration:"none",
-        }}>{issueKey} ↗</a>
-      </div>
-      <div style={{ fontSize:13, color:"#94a3b8" }}>
-        <strong style={{ color:"#e2e8f0" }}>{ticket.summary}</strong><br/>
-        <span style={{ fontSize:11.5, color:"#64748b" }}>{ISSUE_TYPES[ticket.type]?.emoji} {ticket.type} · Prioridad {ticket.priority}</span>
-      </div>
-    </div>
-  );
+// ── API helpers ────────────────────────────────────────────────────────────
+async function callClaude(body) {
+  const res = await fetch("/api/anthropic", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(body),
+  });
+  return res.json();
 }
 
 async function createJiraTicket(ticket) {
   const descFull = ticket.description +
     (ticket.category ? `\n\nCategoría: ${ticket.category}` : "") +
-    (ticket.name ? `\n\nSolicitante: ${ticket.name}` : "") +
+    (ticket.name  ? `\n\nSolicitante: ${ticket.name}`  : "") +
     (ticket.email ? ` (${ticket.email})` : "");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST", headers:{ "Content-Type":"application/json" },
+
+  const res = await fetch("/api/jira", {
+    method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({
-      model:"claude-sonnet-4-20250514", max_tokens:1000,
-      system:"Crea un ticket en Jira. Devuelve ÚNICAMENTE JSON: {\"issueKey\":\"MSTI-XX\",\"success\":true}",
-      messages:[{ role:"user", content:`Crea issue:\n- cloudId: ${CLOUD_ID}\n- project: ${PROJECT_KEY}\n- issueTypeId: ${ticket.type==="Incidente"?"10077":"10076"}\n- summary: ${ticket.summary}\n- description: ${descFull}` }],
-      mcp_servers:[{ type:"url", url:"https://mcp.atlassian.com/v1/mcp", name:"atlassian-mcp" }],
+      summary: ticket.summary,
+      description: descFull,
+      issueTypeId: ticket.type === "Incidente" ? "10077" : "10076",
     }),
   });
-  const data = await res.json();
-  const allText = data.content?.map(b => b.text || JSON.stringify(b.content||"")).join(" ")||"";
-  const match = allText.match(/MSTI-\d+/);
-  if (match) return { success:true, issueKey:match[0] };
-  try { const p = JSON.parse(allText.replace(/```json|```/g,"").trim()); if(p.issueKey) return { success:true, issueKey:p.issueKey }; } catch {}
-  for (const b of data.content||[]) { const t = JSON.stringify(b.content||""); const m = t.match(/MSTI-\d+/); if(m) return { success:true, issueKey:m[0] }; }
-  return { success:false, error:"No se pudo confirmar la creación" };
+  return res.json();
+}
+
+// ── UI helpers ─────────────────────────────────────────────────────────────
+function TypingDots() {
+  return (
+    <div style={{display:"flex",gap:4,alignItems:"center",padding:"10px 0"}}>
+      {[0,1,2].map(i=>(
+        <div key={i} style={{width:7,height:7,borderRadius:"50%",background:"#006EDC",
+          animation:"bounce 1.2s infinite",animationDelay:`${i*0.2}s`}}/>
+      ))}
+    </div>
+  );
+}
+
+function TicketPreview({ticket,onConfirm,onCancel,loading}) {
+  const type = ISSUE_TYPES[ticket.type]||ISSUE_TYPES.Requerimiento;
+  return (
+    <div style={{background:"linear-gradient(135deg,#0f1c2e,#0a1628)",border:"1px solid #1e3a5f",borderRadius:14,padding:18,marginTop:6,boxShadow:"0 0 0 1px rgba(0,110,220,.12),0 8px 28px rgba(0,0,0,.45)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+        <span style={{background:"rgba(0,110,220,.15)",border:"1px solid rgba(0,110,220,.3)",borderRadius:7,padding:"3px 9px",fontSize:11,color:"#60a5fa",fontFamily:"monospace",letterSpacing:1}}>{PROJECT_KEY} · nuevo</span>
+        <span style={{marginLeft:"auto",fontSize:12,color:PRIORITY_COLORS[ticket.priority]}}>● {ticket.priority}</span>
+      </div>
+      <div style={{display:"flex",gap:9,marginBottom:11}}>
+        <span style={{fontSize:18,flexShrink:0}}>{type.emoji}</span>
+        <div>
+          <div style={{fontSize:11,color:"#64748b",textTransform:"uppercase",letterSpacing:1}}>{ticket.type}</div>
+          <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0",lineHeight:1.35,marginTop:2}}>{ticket.summary}</div>
+        </div>
+      </div>
+      <div style={{background:"rgba(255,255,255,.03)",borderRadius:9,padding:"10px 13px",border:"1px solid rgba(255,255,255,.05)",marginBottom:14}}>
+        <div style={{fontSize:11,color:"#64748b",marginBottom:5,letterSpacing:1,textTransform:"uppercase"}}>Descripción</div>
+        <p style={{margin:0,fontSize:13,color:"#94a3b8",lineHeight:1.6}}>{ticket.description}</p>
+      </div>
+      {ticket.category&&<div style={{fontSize:12,color:"#475569",marginBottom:13}}>📂 Categoría: <span style={{color:"#94a3b8"}}>{ticket.category}</span></div>}
+      <div style={{display:"flex",gap:9}}>
+        <button onClick={onConfirm} disabled={loading} style={{flex:1,padding:"10px 0",borderRadius:9,border:"none",cursor:loading?"wait":"pointer",background:loading?"#1e3a5f":"linear-gradient(135deg,#006EDC,#0050a8)",color:"#fff",fontWeight:700,fontSize:13.5,boxShadow:loading?"none":"0 4px 12px rgba(0,110,220,.4)",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          {loading?<span>⏳ Creando…</span>:<span>✅ Crear en Jira</span>}
+        </button>
+        <button onClick={onCancel} disabled={loading} style={{padding:"10px 16px",borderRadius:9,border:"1px solid #1e3a5f",background:"transparent",color:"#64748b",cursor:"pointer",fontSize:13.5,fontWeight:600}}>Editar</button>
+      </div>
+    </div>
+  );
+}
+
+function TicketSuccess({ticket,issueKey}) {
+  return (
+    <div style={{background:"linear-gradient(135deg,#052e16,#0a1628)",border:"1px solid #166534",borderRadius:14,padding:18,boxShadow:"0 0 0 1px rgba(34,197,94,.08)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:10}}>
+        <div style={{width:34,height:34,borderRadius:9,background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>✅</div>
+        <div>
+          <div style={{fontSize:14,fontWeight:700,color:"#4ade80"}}>Ticket creado exitosamente</div>
+          <div style={{fontSize:11.5,color:"#64748b"}}>Mesa de Servicios TI · CChC</div>
+        </div>
+        <a href={`${JIRA_URL}/browse/${issueKey}`} target="_blank" rel="noreferrer" style={{marginLeft:"auto",background:"rgba(34,197,94,.1)",border:"1px solid rgba(34,197,94,.2)",borderRadius:7,padding:"5px 11px",color:"#4ade80",fontSize:12,fontWeight:700,textDecoration:"none"}}>{issueKey} ↗</a>
+      </div>
+      <div style={{fontSize:13,color:"#94a3b8"}}>
+        <strong style={{color:"#e2e8f0"}}>{ticket.summary}</strong><br/>
+        <span style={{fontSize:11.5,color:"#64748b"}}>{ISSUE_TYPES[ticket.type]?.emoji} {ticket.type} · Prioridad {ticket.priority}</span>
+      </div>
+    </div>
+  );
 }
 
 // ── CHAT MODE ──────────────────────────────────────────────────────────────
 function ChatMode() {
-  const [messages, setMessages] = useState([{
-    role:"assistant", type:"text",
-    content:"👋 Hola, soy tu asistente de Mesa de Servicios TI.\n\nDescríbeme tu problema o solicitud con tus propias palabras y me encargo de abrir el ticket en Jira por ti.",
-  }]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [pendingTicket, setPendingTicket] = useState(null);
-  const [creatingTicket, setCreatingTicket] = useState(false);
+  const [messages,setMessages] = useState([{role:"assistant",type:"text",content:"👋 Hola, soy tu asistente de Mesa de Servicios TI.\n\nDescríbeme tu problema o solicitud con tus propias palabras y me encargo de abrir el ticket en Jira por ti."}]);
+  const [input,setInput] = useState("");
+  const [loading,setLoading] = useState(false);
+  const [pendingTicket,setPendingTicket] = useState(null);
+  const [creatingTicket,setCreatingTicket] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, pendingTicket]);
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"})},[messages,pendingTicket]);
 
   async function analyze(userMsg) {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:1000,
-        system:`Eres agente de mesa de servicios TI para CChC. Responde ÚNICAMENTE con JSON sin markdown:
+    const data = await callClaude({
+      model:"claude-sonnet-4-20250514", max_tokens:1000,
+      system:`Eres agente de mesa de servicios TI para CChC. Responde ÚNICAMENTE con JSON sin markdown:
 {"type":"Incidente" o "Requerimiento","summary":"título max 80 chars","description":"descripción 2-4 oraciones","priority":"Alta"|"Media"|"Baja","category":"Acceso y permisos"|"Hardware / Equipos"|"Software / Aplicaciones"|"Red / Conectividad"|"Correo electrónico"|"Telefonía / VoIP"|"Seguridad informática"|"Otro","reply":"respuesta amigable en español 1-2 oraciones"}`,
-        messages:[{ role:"user", content:userMsg }],
-      }),
+      messages:[{role:"user",content:userMsg}],
     });
-    const data = await res.json();
     return JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
   }
 
   async function handleSend() {
-    if (!input.trim()||loading) return;
-    const userMsg = input.trim(); setInput(""); setLoading(true);
-    setMessages(p => [...p, { role:"user", type:"text", content:userMsg }]);
+    if(!input.trim()||loading) return;
+    const userMsg=input.trim(); setInput(""); setLoading(true);
+    setMessages(p=>[...p,{role:"user",type:"text",content:userMsg}]);
     try {
       const ticket = await analyze(userMsg);
-      setMessages(p => [...p, { role:"assistant", type:"text", content:ticket.reply||"Entendido. Aquí el resumen:" }]);
+      setMessages(p=>[...p,{role:"assistant",type:"text",content:ticket.reply||"Entendido. Aquí el resumen:"}]);
       setPendingTicket(ticket);
-    } catch { setMessages(p => [...p, { role:"assistant", type:"text", content:"⚠️ Error al analizar. Intenta de nuevo." }]); }
+    } catch { setMessages(p=>[...p,{role:"assistant",type:"text",content:"⚠️ Error al analizar. Intenta de nuevo."}]); }
     setLoading(false); inputRef.current?.focus();
   }
 
   async function handleConfirm() {
-    if (!pendingTicket) return;
-    setCreatingTicket(true); const ticket = pendingTicket; setPendingTicket(null);
+    if(!pendingTicket) return;
+    setCreatingTicket(true); const ticket=pendingTicket; setPendingTicket(null);
     try {
       const result = await createJiraTicket(ticket);
-      if (result.success) setMessages(p => [...p, { role:"assistant", type:"success", ticket, issueKey:result.issueKey, content:"" }]);
+      if(result.success) setMessages(p=>[...p,{role:"assistant",type:"success",ticket,issueKey:result.issueKey,content:""}]);
       else throw new Error(result.error);
-    } catch(e) { setMessages(p => [...p, { role:"assistant", type:"text", content:`❌ Error: ${e.message}` }]); }
+    } catch(e) { setMessages(p=>[...p,{role:"assistant",type:"text",content:`❌ Error: ${e.message}`}]); }
     setCreatingTicket(false);
-    setMessages(p => [...p, { role:"assistant", type:"text", content:"¿Tienes otra solicitud en la que pueda ayudarte?" }]);
+    setMessages(p=>[...p,{role:"assistant",type:"text",content:"¿Tienes otra solicitud en la que pueda ayudarte?"}]);
     inputRef.current?.focus();
   }
 
   function handleCancel() {
     setPendingTicket(null);
-    setMessages(p => [...p, { role:"assistant", type:"text", content:"Sin problema. Cuéntame de nuevo con más detalle." }]);
+    setMessages(p=>[...p,{role:"assistant",type:"text",content:"Sin problema. Cuéntame de nuevo con más detalle."}]);
     inputRef.current?.focus();
   }
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", flex:1, minHeight:0 }}>
-      <div style={{ flex:1, overflowY:"auto", padding:"16px 18px 10px" }}>
-        {messages.map((msg,i) => (
-          <div key={i} style={{ marginBottom:12, display:"flex", flexDirection:"column", alignItems:msg.role==="user"?"flex-end":"flex-start", animation:"fadeUp 0.3s ease forwards" }}>
+    <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
+      <div style={{flex:1,overflowY:"auto",padding:"16px 18px 10px"}}>
+        {messages.map((msg,i)=>(
+          <div key={i} style={{marginBottom:12,display:"flex",flexDirection:"column",alignItems:msg.role==="user"?"flex-end":"flex-start",animation:"fadeUp 0.3s ease forwards"}}>
             {msg.type==="success"
-              ? <TicketSuccess ticket={msg.ticket} issueKey={msg.issueKey}/>
-              : <div style={{ maxWidth:"86%", background:msg.role==="user"?"linear-gradient(135deg,#006EDC,#0050a8)":"rgba(255,255,255,.04)", border:msg.role==="user"?"none":"1px solid rgba(255,255,255,.07)", borderRadius:msg.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px", padding:"10px 14px", fontSize:13.5, color:msg.role==="user"?"#fff":"#cbd5e1", lineHeight:1.6, whiteSpace:"pre-line" }}>{msg.content}</div>}
+              ?<TicketSuccess ticket={msg.ticket} issueKey={msg.issueKey}/>
+              :<div style={{maxWidth:"86%",background:msg.role==="user"?"linear-gradient(135deg,#006EDC,#0050a8)":"rgba(255,255,255,.04)",border:msg.role==="user"?"none":"1px solid rgba(255,255,255,.07)",borderRadius:msg.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"10px 14px",fontSize:13.5,color:msg.role==="user"?"#fff":"#cbd5e1",lineHeight:1.6,whiteSpace:"pre-line"}}>{msg.content}</div>}
           </div>
         ))}
-        {loading && <div style={{ display:"flex" }}><div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.07)", borderRadius:"16px 16px 16px 4px", padding:"4px 14px" }}><TypingDots/></div></div>}
-        {pendingTicket && !loading && <div style={{ animation:"fadeUp 0.3s ease forwards" }}><TicketPreview ticket={pendingTicket} onConfirm={handleConfirm} onCancel={handleCancel} loading={creatingTicket}/></div>}
+        {loading&&<div style={{display:"flex"}}><div style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.07)",borderRadius:"16px 16px 16px 4px",padding:"4px 14px"}}><TypingDots/></div></div>}
+        {pendingTicket&&!loading&&<div style={{animation:"fadeUp 0.3s ease forwards"}}><TicketPreview ticket={pendingTicket} onConfirm={handleConfirm} onCancel={handleCancel} loading={creatingTicket}/></div>}
         <div ref={bottomRef}/>
       </div>
-      <div style={{ padding:"10px 14px", borderTop:"1px solid rgba(255,255,255,.06)", background:"rgba(6,13,26,.6)", display:"flex", gap:9, alignItems:"flex-end" }}>
-        <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSend();} }}
+      <div style={{padding:"10px 14px",borderTop:"1px solid rgba(255,255,255,.06)",background:"rgba(6,13,26,.6)",display:"flex",gap:9,alignItems:"flex-end"}}>
+        <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSend();}}}
           placeholder="Describe tu problema… (Enter para enviar)"
           disabled={loading||creatingTicket||!!pendingTicket} rows={1}
-          style={{ flex:1, background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"10px 13px", color:"#e2e8f0", fontSize:13.5, resize:"none", fontFamily:"inherit", lineHeight:1.5, opacity:(loading||creatingTicket||!!pendingTicket)?0.5:1 }}/>
+          style={{flex:1,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.1)",borderRadius:10,padding:"10px 13px",color:"#e2e8f0",fontSize:13.5,resize:"none",fontFamily:"inherit",lineHeight:1.5,opacity:(loading||creatingTicket||!!pendingTicket)?0.5:1}}/>
         <button onClick={handleSend} disabled={!input.trim()||loading||creatingTicket||!!pendingTicket}
-          style={{ width:40, height:40, borderRadius:10, border:"none", background:input.trim()&&!loading&&!creatingTicket&&!pendingTicket?"linear-gradient(135deg,#006EDC,#0050a8)":"rgba(255,255,255,.06)", color:"#fff", cursor:"pointer", fontSize:17, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>↑</button>
+          style={{width:40,height:40,borderRadius:10,border:"none",background:input.trim()&&!loading&&!creatingTicket&&!pendingTicket?"linear-gradient(135deg,#006EDC,#0050a8)":"rgba(255,255,255,.06)",color:"#fff",cursor:"pointer",fontSize:17,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>↑</button>
       </div>
     </div>
   );
@@ -240,80 +206,80 @@ function ChatMode() {
 
 // ── FORM MODE ──────────────────────────────────────────────────────────────
 function FormMode() {
-  const [form, setForm] = useState({ type:"Incidente", priority:"Media", category:"", summary:"", description:"", name:"", email:"" });
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState(null);
-  const set = (k,v) => setForm(f => ({ ...f, [k]:v }));
-  const valid = form.summary.trim() && form.description.trim();
+  const [form,setForm] = useState({type:"Incidente",priority:"Media",category:"",summary:"",description:"",name:"",email:""});
+  const [submitting,setSubmitting] = useState(false);
+  const [result,setResult] = useState(null);
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const valid=form.summary.trim()&&form.description.trim();
 
-  const labelStyle = { fontSize:11.5, color:"#64748b", marginBottom:5, display:"block", letterSpacing:.5, textTransform:"uppercase" };
-  const inputStyle = { width:"100%", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.1)", borderRadius:9, padding:"10px 13px", color:"#e2e8f0", fontSize:13.5, fontFamily:"inherit", boxSizing:"border-box" };
+  const labelStyle={fontSize:11.5,color:"#64748b",marginBottom:5,display:"block",letterSpacing:.5,textTransform:"uppercase"};
+  const inputStyle={width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.1)",borderRadius:9,padding:"10px 13px",color:"#e2e8f0",fontSize:13.5,fontFamily:"inherit",boxSizing:"border-box"};
 
   async function handleSubmit() {
-    if (!valid||submitting) return;
+    if(!valid||submitting) return;
     setSubmitting(true);
     try {
       const r = await createJiraTicket(form);
-      if (r.success) setResult({ issueKey:r.issueKey });
+      if(r.success) setResult({issueKey:r.issueKey});
       else throw new Error(r.error);
-    } catch(e) { alert(`Error: ${e.message}`); }
+    } catch(e){alert(`Error: ${e.message}`);}
     setSubmitting(false);
   }
 
-  if (result) return (
-    <div style={{ padding:24 }}>
+  if(result) return (
+    <div style={{padding:24}}>
       <TicketSuccess ticket={form} issueKey={result.issueKey}/>
-      <button onClick={() => { setResult(null); setForm({ type:"Incidente", priority:"Media", category:"", summary:"", description:"", name:"", email:"" }); }} style={{ width:"100%", marginTop:14, padding:"11px 0", borderRadius:10, border:"1px solid #1e3a5f", background:"transparent", color:"#64748b", cursor:"pointer", fontSize:13.5, fontWeight:600 }}>Crear otro ticket</button>
+      <button onClick={()=>{setResult(null);setForm({type:"Incidente",priority:"Media",category:"",summary:"",description:"",name:"",email:""});}} style={{width:"100%",marginTop:14,padding:"11px 0",borderRadius:10,border:"1px solid #1e3a5f",background:"transparent",color:"#64748b",cursor:"pointer",fontSize:13.5,fontWeight:600}}>Crear otro ticket</button>
     </div>
   );
 
   return (
-    <div style={{ padding:"18px 20px 20px", overflowY:"auto", flex:1 }}>
-      <div style={{ marginBottom:16 }}>
+    <div style={{padding:"18px 20px 20px",overflowY:"auto",flex:1}}>
+      <div style={{marginBottom:16}}>
         <label style={labelStyle}>Tipo de solicitud</label>
-        <div style={{ display:"flex", gap:9 }}>
-          {Object.entries(ISSUE_TYPES).map(([k,v]) => (
-            <button key={k} onClick={() => set("type",k)} style={{ flex:1, padding:"10px 12px", borderRadius:9, cursor:"pointer", border:form.type===k?"1.5px solid #006EDC":"1px solid rgba(255,255,255,.08)", background:form.type===k?"rgba(0,110,220,.15)":"rgba(255,255,255,.03)", color:form.type===k?"#60a5fa":"#64748b", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}>
-              <span>{v.emoji}</span> {k}
+        <div style={{display:"flex",gap:9}}>
+          {Object.entries(ISSUE_TYPES).map(([k,v])=>(
+            <button key={k} onClick={()=>set("type",k)} style={{flex:1,padding:"10px 12px",borderRadius:9,cursor:"pointer",border:form.type===k?"1.5px solid #006EDC":"1px solid rgba(255,255,255,.08)",background:form.type===k?"rgba(0,110,220,.15)":"rgba(255,255,255,.03)",color:form.type===k?"#60a5fa":"#64748b",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6}}>
+              <span>{v.emoji}</span>{k}
             </button>
           ))}
         </div>
       </div>
-      <div style={{ display:"flex", gap:12, marginBottom:16 }}>
-        <div style={{ flex:1 }}>
+      <div style={{display:"flex",gap:12,marginBottom:16}}>
+        <div style={{flex:1}}>
           <label style={labelStyle}>Prioridad</label>
-          <select value={form.priority} onChange={e => set("priority",e.target.value)} style={{ ...inputStyle, appearance:"none" }}>
-            {PRIORITIES.map(p => <option key={p}>{p}</option>)}
+          <select value={form.priority} onChange={e=>set("priority",e.target.value)} style={{...inputStyle,appearance:"none"}}>
+            {PRIORITIES.map(p=><option key={p}>{p}</option>)}
           </select>
         </div>
-        <div style={{ flex:2 }}>
+        <div style={{flex:2}}>
           <label style={labelStyle}>Categoría</label>
-          <select value={form.category} onChange={e => set("category",e.target.value)} style={{ ...inputStyle, appearance:"none" }}>
+          <select value={form.category} onChange={e=>set("category",e.target.value)} style={{...inputStyle,appearance:"none"}}>
             <option value="">Seleccionar…</option>
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            {CATEGORIES.map(c=><option key={c}>{c}</option>)}
           </select>
         </div>
       </div>
-      <div style={{ marginBottom:14 }}>
+      <div style={{marginBottom:14}}>
         <label style={labelStyle}>Título del ticket *</label>
-        <input value={form.summary} onChange={e => set("summary",e.target.value)} placeholder="Ej: No puedo iniciar sesión en SAP" style={inputStyle}/>
+        <input value={form.summary} onChange={e=>set("summary",e.target.value)} placeholder="Ej: No puedo iniciar sesión en SAP" style={inputStyle}/>
       </div>
-      <div style={{ marginBottom:14 }}>
+      <div style={{marginBottom:14}}>
         <label style={labelStyle}>Descripción *</label>
-        <textarea value={form.description} onChange={e => set("description",e.target.value)} placeholder="Describe el problema con el mayor detalle posible…" rows={4} style={{ ...inputStyle, resize:"none" }}/>
+        <textarea value={form.description} onChange={e=>set("description",e.target.value)} placeholder="Describe el problema con el mayor detalle posible…" rows={4} style={{...inputStyle,resize:"none"}}/>
       </div>
-      <div style={{ display:"flex", gap:12, marginBottom:20 }}>
-        <div style={{ flex:1 }}>
+      <div style={{display:"flex",gap:12,marginBottom:20}}>
+        <div style={{flex:1}}>
           <label style={labelStyle}>Tu nombre</label>
-          <input value={form.name} onChange={e => set("name",e.target.value)} placeholder="Juan Pérez" style={inputStyle}/>
+          <input value={form.name} onChange={e=>set("name",e.target.value)} placeholder="Juan Pérez" style={inputStyle}/>
         </div>
-        <div style={{ flex:1 }}>
+        <div style={{flex:1}}>
           <label style={labelStyle}>Correo</label>
-          <input value={form.email} onChange={e => set("email",e.target.value)} placeholder="juan@cchc.cl" style={inputStyle}/>
+          <input value={form.email} onChange={e=>set("email",e.target.value)} placeholder="juan@cchc.cl" style={inputStyle}/>
         </div>
       </div>
-      <button onClick={handleSubmit} disabled={!valid||submitting} style={{ width:"100%", padding:"12px 0", borderRadius:10, border:"none", cursor:valid&&!submitting?"pointer":"not-allowed", background:valid&&!submitting?"linear-gradient(135deg,#006EDC,#0050a8)":"rgba(255,255,255,.06)", color:valid?"#fff":"#475569", fontWeight:700, fontSize:14, boxShadow:valid&&!submitting?"0 4px 14px rgba(0,110,220,.4)":"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
-        {submitting ? <span>⏳ Enviando…</span> : <span>🎫 Crear ticket en Jira</span>}
+      <button onClick={handleSubmit} disabled={!valid||submitting} style={{width:"100%",padding:"12px 0",borderRadius:10,border:"none",cursor:valid&&!submitting?"pointer":"not-allowed",background:valid&&!submitting?"linear-gradient(135deg,#006EDC,#0050a8)":"rgba(255,255,255,.06)",color:valid?"#fff":"#475569",fontWeight:700,fontSize:14,boxShadow:valid&&!submitting?"0 4px 14px rgba(0,110,220,.4)":"none",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
+        {submitting?<span>⏳ Enviando…</span>:<span>🎫 Crear ticket en Jira</span>}
       </button>
     </div>
   );
@@ -321,65 +287,56 @@ function FormMode() {
 
 // ── MAIN ───────────────────────────────────────────────────────────────────
 function App() {
-  const [mode, setMode] = useState(null);
-
+  const [mode,setMode] = useState(null);
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#060d1a 0%,#08111f 60%,#0a0d14 100%)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:mode?"flex-start":"center", padding:mode?"20px 16px":"24px 16px", fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
-
-      {/* Header */}
-      <div style={{ width:"100%", maxWidth:640, marginBottom:16, display:"flex", alignItems:"center", gap:10 }}>
-        <div style={{ width:40, height:40, borderRadius:11, background:"linear-gradient(135deg,#006EDC,#004aab)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, boxShadow:"0 4px 14px rgba(0,110,220,.4)", flexShrink:0 }}>🎫</div>
+    <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#060d1a 0%,#08111f 60%,#0a0d14 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:mode?"flex-start":"center",padding:mode?"20px 16px":"24px 16px",fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+      <div style={{width:"100%",maxWidth:640,marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+        <div style={{width:40,height:40,borderRadius:11,background:"linear-gradient(135deg,#006EDC,#004aab)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,boxShadow:"0 4px 14px rgba(0,110,220,.4)",flexShrink:0}}>🎫</div>
         <div>
-          <div style={{ fontSize:15, fontWeight:800, color:"#e2e8f0", letterSpacing:-.3 }}>Mesa de Servicios TI</div>
-          <div style={{ fontSize:11.5, color:"#475569" }}>CChC · Jira MSTI</div>
+          <div style={{fontSize:15,fontWeight:800,color:"#e2e8f0",letterSpacing:-.3}}>Mesa de Servicios TI</div>
+          <div style={{fontSize:11.5,color:"#475569"}}>CChC · Jira MSTI</div>
         </div>
-        <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:6, background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.2)", borderRadius:20, padding:"4px 11px" }}>
-          <div style={{ width:6, height:6, borderRadius:"50%", background:"#22c55e" }}/>
-          <span style={{ fontSize:11, color:"#4ade80", fontWeight:600 }}>Conectado</span>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.2)",borderRadius:20,padding:"4px 11px"}}>
+          <div style={{width:6,height:6,borderRadius:"50%",background:"#22c55e"}}/>
+          <span style={{fontSize:11,color:"#4ade80",fontWeight:600}}>Conectado</span>
         </div>
       </div>
 
-      {/* Card */}
-      <div style={{ width:"100%", maxWidth:640, background:"rgba(10,22,40,.85)", border:"1px solid #1e3a5f", borderRadius:20, overflow:"hidden", boxShadow:"0 0 0 1px rgba(0,110,220,.05),0 24px 64px rgba(0,0,0,.6)", backdropFilter:"blur(20px)", display:"flex", flexDirection:"column", minHeight:mode?540:"auto", animation:"fadeUp 0.4s ease forwards" }}>
-
-        {!mode && (
-          <div style={{ padding:"32px 28px", textAlign:"center" }}>
-            <div style={{ fontSize:28, marginBottom:10 }}>🛠️</div>
-            <h2 style={{ margin:"0 0 6px", color:"#e2e8f0", fontSize:20, fontWeight:800 }}>¿Cómo quieres crear tu ticket?</h2>
-            <p style={{ margin:"0 0 28px", color:"#64748b", fontSize:13.5 }}>Elige el método que prefieras para reportar tu solicitud o incidente.</p>
-            <div style={{ display:"flex", gap:14 }}>
+      <div style={{width:"100%",maxWidth:640,background:"rgba(10,22,40,.85)",border:"1px solid #1e3a5f",borderRadius:20,overflow:"hidden",boxShadow:"0 0 0 1px rgba(0,110,220,.05),0 24px 64px rgba(0,0,0,.6)",backdropFilter:"blur(20px)",display:"flex",flexDirection:"column",minHeight:mode?540:"auto",animation:"fadeUp 0.4s ease forwards"}}>
+        {!mode&&(
+          <div style={{padding:"32px 28px",textAlign:"center"}}>
+            <div style={{fontSize:28,marginBottom:10}}>🛠️</div>
+            <h2 style={{margin:"0 0 6px",color:"#e2e8f0",fontSize:20,fontWeight:800}}>¿Cómo quieres crear tu ticket?</h2>
+            <p style={{margin:"0 0 28px",color:"#64748b",fontSize:13.5}}>Elige el método que prefieras para reportar tu solicitud o incidente.</p>
+            <div style={{display:"flex",gap:14}}>
               {[
-                { key:"chat", emoji:"💬", title:"Chat con IA", desc:"Describe tu problema en lenguaje natural y la IA estructura el ticket por ti.", accent:"0,110,220" },
-                { key:"form", emoji:"📋", title:"Formulario", desc:"Completa los campos directamente con toda la información de tu solicitud.", accent:"231,65,0" },
-              ].map(opt => (
-                <button key={opt.key} onClick={() => setMode(opt.key)} style={{ flex:1, padding:"20px 16px", borderRadius:14, cursor:"pointer", border:`1.5px solid rgba(${opt.accent},.25)`, background:`rgba(${opt.accent},.07)`, display:"flex", flexDirection:"column", alignItems:"flex-start", gap:8, textAlign:"left" }}>
-                  <span style={{ fontSize:28 }}>{opt.emoji}</span>
-                  <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0" }}>{opt.title}</div>
-                  <div style={{ fontSize:12.5, color:"#64748b", lineHeight:1.5 }}>{opt.desc}</div>
-                  <div style={{ marginTop:4, fontSize:12, fontWeight:700, color:`rgb(${opt.accent})` }}>Seleccionar →</div>
+                {key:"chat",emoji:"💬",title:"Chat con IA",desc:"Describe tu problema en lenguaje natural y la IA estructura el ticket por ti.",accent:"0,110,220"},
+                {key:"form",emoji:"📋",title:"Formulario",desc:"Completa los campos directamente con toda la información de tu solicitud.",accent:"231,65,0"},
+              ].map(opt=>(
+                <button key={opt.key} onClick={()=>setMode(opt.key)} style={{flex:1,padding:"20px 16px",borderRadius:14,cursor:"pointer",border:`1.5px solid rgba(${opt.accent},.25)`,background:`rgba(${opt.accent},.07)`,display:"flex",flexDirection:"column",alignItems:"flex-start",gap:8,textAlign:"left"}}>
+                  <span style={{fontSize:28}}>{opt.emoji}</span>
+                  <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0"}}>{opt.title}</div>
+                  <div style={{fontSize:12.5,color:"#64748b",lineHeight:1.5}}>{opt.desc}</div>
+                  <div style={{marginTop:4,fontSize:12,fontWeight:700,color:`rgb(${opt.accent})`}}>Seleccionar →</div>
                 </button>
               ))}
             </div>
           </div>
         )}
-
-        {mode && (
+        {mode&&(
           <>
-            <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,.07)" }}>
-              {[{ key:"chat", label:"💬 Chat IA" },{ key:"form", label:"📋 Formulario" }].map(tab => (
-                <button key={tab.key} onClick={() => setMode(tab.key)} style={{ flex:1, padding:"13px 0", border:"none", cursor:"pointer", background:"transparent", color:mode===tab.key?"#60a5fa":"#475569", fontWeight:mode===tab.key?700:500, fontSize:13.5, borderBottom:mode===tab.key?"2px solid #006EDC":"2px solid transparent" }}>{tab.label}</button>
+            <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,.07)"}}>
+              {[{key:"chat",label:"💬 Chat IA"},{key:"form",label:"📋 Formulario"}].map(tab=>(
+                <button key={tab.key} onClick={()=>setMode(tab.key)} style={{flex:1,padding:"13px 0",border:"none",cursor:"pointer",background:"transparent",color:mode===tab.key?"#60a5fa":"#475569",fontWeight:mode===tab.key?700:500,fontSize:13.5,borderBottom:mode===tab.key?"2px solid #006EDC":"2px solid transparent"}}>{tab.label}</button>
               ))}
             </div>
-            <div style={{ flex:1, display:"flex", flexDirection:"column", minHeight:0, maxHeight:520, overflow:"hidden" }}>
-              {mode==="chat" ? <ChatMode/> : <FormMode/>}
+            <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0,maxHeight:520,overflow:"hidden"}}>
+              {mode==="chat"?<ChatMode/>:<FormMode/>}
             </div>
           </>
         )}
       </div>
-
-      <div style={{ marginTop:12, fontSize:11, color:"#1e3a5f", textAlign:"center" }}>
-        Powered by Claude AI · Jira Service Management · CChC
-      </div>
+      <div style={{marginTop:12,fontSize:11,color:"#1e3a5f",textAlign:"center"}}>Powered by Claude AI · Jira Service Management · CChC</div>
     </div>
   );
 }
